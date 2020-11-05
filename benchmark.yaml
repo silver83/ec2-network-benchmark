@@ -96,7 +96,7 @@ Resources:
           - "  sleep 120 \n"
           - !Sub "SERVER_INSTANCE_ID=$(aws ec2 describe-instances --region ${AWS::Region} --filters 'Name=tag:aws:autoscaling:groupName,Values=${ServerMachineAutoScalingGroup}' 'Name=instance-state-name,Values=running' --query 'Reservations[*].Instances[*].InstanceId' --output text) \n"
           - !Sub "aws ec2 wait instance-running --region ${AWS::Region} --instance-ids $SERVER_INSTANCE_ID \n"
-          - !Sub "SERVER_PRIVATE_IP=$(aws ec2 describe-instances --instance-ids $SERVER_INSTANCE_ID --query 'Reservations[*].Instances[*].PrivateIpAddress' --output text) \n"
+          - !Sub "SERVER_PRIVATE_IP=$(aws ec2 describe-instances --region ${AWS::Region} --instance-ids $SERVER_INSTANCE_ID --query 'Reservations[*].Instances[*].PrivateIpAddress' --output text) \n"
           - " iperf3 --client $SERVER_PRIVATE_IP --time 3600 --interval 60 --version4 --json -P 10 | jq -c '{start: .start, intervals: .intervals, end: .end, instanceType: \""
           - !Sub "${InstanceTypeClient}"
           - "\", region: \""
