@@ -1,7 +1,7 @@
 #!/bin/bash -x
 
-INSTANCE_TYPE_SERVER="c5.18xlarge"
-SPOT_PRICE_SERVER="3.456"
+INSTANCE_TYPE_SERVER="c5n.18xlarge"
+SPOT_PRICE_SERVER="1.1659"
 
 # $1 = client instance type
 function create {

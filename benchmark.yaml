@@ -1,22 +1,9 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'EC2 Network Benchmark: benchmark'
-Metadata:
-  'AWS::CloudFormation::Interface':
-    ParameterGroups:
-    - Label:
-        default: 'Parent Stacks'
-      Parameters:
-      - ParentVPCStack
-      - ParentGlobalStack
-    - Label:
-        default: 'EC2 Parameters'
-      Parameters:
-      - InstanceTypeClient
-      - InstanceTypeServer
 Parameters:
-  ParentVPCStack:
-    Description: 'Stack name of parent VPC stack based on vpc/vpc-*azs.yaml template.'
+  SubnetId:
+    Description: 'Subnet to launch in'
     Type: String
   ParentGlobalStack:
     Description: 'Stack name of parent global stack based on global.yaml template.'
@@ -40,14 +27,7 @@ Parameters:
     Default: 0
 Mappings:
   RegionMap:
-    # AMD64:
-    #   CreationDate: '2018-11-14T09:06:55.000Z'
-    #   Name: amzn2-ami-hvm-2.0.20181114-x86_64-gp2
-    #   Owner: amazon
-    # ARM64:
-    #   CreationDate: '2018-11-27T03:53:23.000Z'
-    #   Name: amzn2-ami-hvm-2.0.20181114.1-arm64-gp2
-    #   Owner: amazon
+    # ami-0947d2ba12ee1ff75 (64-bit x86) / ami-007a607c4abd192db (64-bit Arm)
     ap-northeast-1:
       AMD64: ami-0a2de1c3b415889d2
     ap-northeast-2:
@@ -72,8 +52,8 @@ Mappings:
     sa-east-1:
       AMD64: ami-0112d42866980b373
     us-east-1:
-      AMD64: ami-009d6802948d06e52
-      ARM64: ami-0f8c82faeb08f15da
+      AMD64: ami-0947d2ba12ee1ff75
+      ARM64: ami-007a607c4abd192db
     us-east-2:
       AMD64: ami-02e680c4540db351e
       ARM64: ami-0998858ab6ad47da8
@@ -90,6 +70,8 @@ Resources:
   ClientMachineLaunchConfig:
     Type: 'AWS::AutoScaling::LaunchConfiguration'
     Properties:
+      # KeyName: 'ysshalom'
+      # AssociatePublicIpAddress: true
       SpotPrice: !If [HasSpotPriceClient, !Ref SpotPriceClient, !Ref 'AWS::NoValue']
       IamInstanceProfile:
         'Fn::ImportValue': !Sub '${ParentGlobalStack}-IAMInstanceProfileName'
@@ -112,8 +94,7 @@ Resources:
           - "  yum clean all \n"
           - "  yum -y install iperf3 jq \n"
           - "  sleep 60 \n"
-          - !Sub "SERVER_INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups --region ${AWS::Region} --auto-scaling-group-name ${ServerMachineAutoScalingGroup} --query AutoScalingGroups[*].Instances[0].InstanceId --output text) \n"
-          - !Sub "SERVER_PRIVATE_IP=$(aws ec2 describe-instances --region ${AWS::Region} --instance-ids $SERVER_INSTANCE_ID --query Reservations[0].Instances[0].PrivateIpAddress --output text) \n"
+          - !Sub "SERVER_PRIVATE_IP=$(aws ec2 describe-instances --region ${AWS::Region} --filters 'Name=tag:aws:autoscaling:groupName,Values=${ServerMachineAutoScalingGroup}' 'Name=instance-state-name,Values=running' --query 'Reservations[*].Instances[*].PrivateIpAddress' --output text)"
           - " iperf3 --client $SERVER_PRIVATE_IP --time 3600 --interval 60 --version4 --json -P 10 | jq -c '{start: .start, intervals: .intervals, end: .end, instanceType: \""
           - !Sub "${InstanceTypeClient}"
           - "\", region: \""
@@ -130,8 +111,8 @@ Resources:
       MinSize: 1
       MaxSize: 1
       DesiredCapacity: 1
-      VPCZoneIdentifier:
-      - 'Fn::ImportValue': !Sub '${ParentVPCStack}-SubnetAPublic'
+      VPCZoneIdentifier: 
+      - !Ref SubnetId
       Tags:
       - Key: Name
         Value: 'EC2 Network Benchmark Client'
@@ -143,6 +124,8 @@ Resources:
   ServerMachineLaunchConfig:
     Type: 'AWS::AutoScaling::LaunchConfiguration'
     Properties:
+      # KeyName: 'ysshalom'
+      # AssociatePublicIpAddress: true
       SpotPrice: !If [HasSpotPriceServer, !Ref SpotPriceServer, !Ref 'AWS::NoValue']
       IamInstanceProfile:
         'Fn::ImportValue': !Sub '${ParentGlobalStack}-IAMInstanceProfileName'
@@ -168,8 +151,8 @@ Resources:
       MinSize: 1
       MaxSize: 1
       DesiredCapacity: 1
-      VPCZoneIdentifier:
-      - 'Fn::ImportValue': !Sub '${ParentVPCStack}-SubnetAPublic'
+      VPCZoneIdentifier: 
+      - !Ref SubnetId
       Tags:
       - Key: Name
         Value: 'EC2 Network Benchmark Server'

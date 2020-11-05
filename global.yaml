@@ -1,16 +1,8 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'EC2 Network Benchmark: global'
-Metadata:
-  'AWS::CloudFormation::Interface':
-    ParameterGroups:
-    - Label:
-        default: 'Parent Stacks'
-      Parameters:
-      - ParentVPCStack
 Parameters:
-  ParentVPCStack:
-    Description: 'Stack name of parent VPC stack based on vpc/vpc-*azs.yaml template.'
+  VpcId:    
     Type: String
 Resources:
   S3Bucket:
@@ -20,15 +12,22 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: !Sub '${AWS::StackName}-client'
-      VpcId:
-        'Fn::ImportValue': !Sub '${ParentVPCStack}-VPC'
-  SecurityGroupIngress:
+      VpcId: !Ref VpcId
+  SecurityGroupIngressIPerf:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Sub '${SecurityGroup.GroupId}'
       IpProtocol: tcp
       FromPort: '5201'
       ToPort: '5201'
+      SourceSecurityGroupId: !Sub '${SecurityGroup.GroupId}'
+  SecurityGroupIngressSSH:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Sub '${SecurityGroup.GroupId}'
+      IpProtocol: tcp
+      FromPort: '22'
+      ToPort: '22'
       SourceSecurityGroupId: !Sub '${SecurityGroup.GroupId}'
   IAMInstanceProfile:
     Type: 'AWS::IAM::InstanceProfile'
